@@ -1,0 +1,13 @@
+{
+    "token":"MTMzMzc1NzQzMzA5MjUwOTc3Nw.GQiNpW.7mkvEwLqP1AN4PaVUCA5f59vtL2jo7qAztWrzs",
+    "clientId":"1333757433092509777",
+    "guildId":"915928957415718954",
+    "prefix": "!",
+  "activity": "/help",
+  "activityType": "LISTENING",
+  "embedColor": "#0099FF",
+  "errorColor": "#FF0000",
+  "successColor": "#00FF00",
+  "modLogChannel": "mod-logs",
+  "welcomeChannel": "welcome"
+}
