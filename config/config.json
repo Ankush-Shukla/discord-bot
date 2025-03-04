@@ -8,6 +8,6 @@
   "embedColor": "#0099FF",
   "errorColor": "#FF0000",
   "successColor": "#00FF00",
-  "modLogChannel": "mod-logs",
+  "modLogChannel": "mod-log",
   "welcomeChannel": "welcome"
 }
