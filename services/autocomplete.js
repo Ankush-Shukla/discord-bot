@@ -9,31 +9,28 @@ module.exports = {
     async execute(interaction) {
         if (!interaction.isAutocomplete()) return;
 
-        const focusedValue = interaction.options.getFocused();
+        const query = interaction.options.getFocused();
+        
+        // Prevent API spam: Only search if the query is 3+ characters
+        if (!query || query.length < 3) return interaction.respond([]);
 
         try {
-            // Search YouTube for videos matching the input
             const response = await youtube.search.list({
                 part: 'snippet',
-                q: focusedValue,
+                q: query,
                 type: 'video',
-                maxResults: 10,
-                videoCategoryId: '10', // 🔥 Restricts search to music videos
-                topicId: '/m/04rlf',   // 🎵 Filters for music-related videos
-                order: 'viewCount'     // 📊 Sort by highest views
+                maxResults: 5,
+                videoCategoryId: '10',
+                topicId: '/m/04rlf',
+                order: 'viewCount'
             });
-            const maxChoiceLength = 100;
-            // Format the results as choices, trimming long names
-            const choices = response.data.items.map(video => {
-                let name = `${video.snippet.title} [${video.snippet.channelTitle}]`;
-                if (name.length > maxChoiceLength) {
-                    name = name.substring(0, maxChoiceLength - 3) + '...';
-                }
-                return {
-                    name,
-                    value: `https://www.youtube.com/watch?v=${video.id.videoId}`
-                };
-            });
+
+            if (!response.data.items.length) return interaction.respond([]);
+
+            const choices = response.data.items.map(video => ({
+                name: video.snippet.title.substring(0, 100),
+                value: `https://www.youtube.com/watch?v=${video.id.videoId}`
+            }));
 
             await interaction.respond(choices);
         } catch (error) {

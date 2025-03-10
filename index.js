@@ -12,7 +12,8 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildVoiceStates
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildPresences
   ]
 });
 
@@ -26,7 +27,10 @@ if (!token) {
 }
 
 // Create a collection for commands
+client.queue = new Map(); // Stores queues for each guild
+
 client.commands = new Collection();
+
 
 // Load command files
 const loadCommands = (dir) => {
