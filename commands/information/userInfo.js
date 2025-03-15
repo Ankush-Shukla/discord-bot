@@ -12,7 +12,7 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        const user = interaction.options.getUser('target') || interaction.user;
+        const user = interaction.options.getUser('user') || interaction.user;
         const member = await interaction.guild.members.fetch(user.id);
         
         const embed = userInfoEmbed(user, member, interaction.user);
