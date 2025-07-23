@@ -1,5 +1,4 @@
 # Dependencies
-node_modules/
 package-lock.json
 yarn.lock
 
@@ -37,3 +36,5 @@ build/
 *.swp
 *.swo
 .DS_Stores
+
+node_modules/
