@@ -1,48 +1,57 @@
 require('dotenv').config();
-const { exec } = require('child_process');
 const util = require('util');
-const execAsync = util.promisify(exec);
 const path = require('path');
+const { exec } = require('child_process');
+const execAsync = util.promisify(exec);
 
-const ytDlpPath = "D:\\GitProjects\\Chotu\\bin\\yt-dlp.exe";// Ensure correct path
-
-/**
- * Fetches YouTube video details (title, duration, author, thumbnail) using yt-dlp.
- * @param {string} videoUrl - The full YouTube video URL.
- * @returns {Promise<{title: string, duration: string, author: string, thumbnail: string}>} - Video details.
- */
-async function getYouTubeVideoDetails(videoUrl) {
-  try {
-    // Execute yt-dlp command to fetch metadata
-    const { stdout } = await execAsync(`"${ytDlpPath}" --no-warnings -J "${videoUrl}"`);
-    
-    // Parse JSON output
-    const videoData = JSON.parse(stdout);
-
-    const title = videoData.title || 'Unknown';
-    const author = videoData.uploader || 'Unknown';
-    const duration = formatDuration(videoData.duration || 0); // Convert seconds to mm:ss
-    const thumbnail = videoData.thumbnail || ''; // Use the highest quality available
-
-    return { title, duration, author, thumbnail };
-  } catch (error) {
-    console.error('Error fetching video details:', error);
-    return { title: 'Unknown', duration: 'Unknown', author: 'Unknown', thumbnail: '' };
-  }
-}
+// Dynamically resolve yt-dlp binary (handles Linux, macOS, Windows)
+const ytDlpPath = path.resolve('C:/discord-bot/bin/yt-dlp' + (process.platform === 'win32' ? '.exe' : ''));
 
 /**
- * Converts duration in seconds to mm:ss or hh:mm:ss format.
- * @param {number} seconds - Duration in seconds.
- * @returns {string} - Formatted duration.
+ * Converts seconds to hh:mm:ss or mm:ss format.
  */
 function formatDuration(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
+  return h > 0
+    ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    : `${m}:${s.toString().padStart(2, '0')}`;
+}
 
-  return h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` 
-               : `${m}:${s.toString().padStart(2, '0')}`;
+/**
+ * Gets YouTube video details using yt-dlp.
+ */
+async function getYouTubeVideoDetails(videoUrl) {
+  try {
+    if (!videoUrl || typeof videoUrl !== 'string') {
+      throw new Error('Invalid video URL');
+    }
+
+    const command = `"${ytDlpPath}" --no-warnings -J "${videoUrl}"`;
+    const { stdout, stderr } = await execAsync(command);
+
+    if (stderr) {
+      console.warn('yt-dlp stderr:', stderr);
+    }
+
+    const videoData = JSON.parse(stdout);
+
+    return {
+      title: videoData.title || 'Unknown',
+      author: videoData.uploader || 'Unknown',
+      duration: formatDuration(videoData.duration || 0),
+      thumbnail: videoData.thumbnail || ''
+    };
+  } catch (error) {
+    console.error('❌ yt-dlp Error ->', error.message);
+    return {
+      title: 'Unknown',
+      author: 'Unknown',
+      duration: '0:00',
+      thumbnail: ''
+    };
+  }
 }
 
 module.exports = { getYouTubeVideoDetails };
