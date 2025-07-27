@@ -1,0 +1,207 @@
+🚨 Moderation Commands
+/ban [user] [reason]
+
+/unban [user ID]
+
+/kick [user] [reason]
+
+/mute [user] [duration]
+
+/unmute [user]
+
+/warn [user] [reason]
+
+/warnings [user]
+
+/clear [amount] (bulk delete messages)
+
+/slowmode [duration]
+
+/lock [channel]
+
+/unlock [channel]
+
+/nuke (clone + delete channel)
+
+📚 Utility Commands
+/ping – latency check
+
+/uptime
+
+/botinfo
+
+/serverinfo
+
+/userinfo [user]
+
+/avatar [user]
+
+/roleinfo [role]
+
+/channelinfo
+
+/whois [user]
+
+/remindme [duration] [message]
+
+/poll [question] [options]
+
+/translate [text] [lang]
+
+/weather [location]
+
+/time [timezone]
+
+/define [word]
+
+🎵 Music Commands (via Lavalink or play-dl)
+/play [song name or URL]
+
+/pause
+
+/resume
+
+/skip
+
+/queue
+
+/nowplaying
+
+/volume [0-100]
+
+/stop
+
+/loop [track|queue|off]
+
+/shuffle
+
+/remove [index]
+
+/lyrics [song name]
+
+🎮 Fun & Games
+/meme
+
+/joke
+
+/8ball [question]
+
+/coinflip
+
+/dice
+
+/rps [rock|paper|scissors]
+
+/gif [search term]
+
+/trivia
+
+/guessnumber
+
+/wouldyourather
+
+/ascii [text]
+
+/fact
+
+💬 Chat & AI
+/ask [question] – Ask GPT-like model
+
+/image [prompt] – Generate image (e.g., via DALL·E or Stable Diffusion)
+
+/summarize [text] – Summarize long text
+
+/translate [text] [language]
+
+/chat [message] – Ongoing conversation
+
+/quote [topic]
+
+🔧 Server Management
+/addrole [user] [role]
+
+/removerole [user] [role]
+
+/createrole [name] [color]
+
+/deleterole [role]
+
+/createchannel [name] [type]
+
+/deletechannel [channel]
+
+/welcome [channel]
+
+/setprefix [prefix] (if not using slash commands)
+
+📊 Economy & Leveling
+/balance
+
+/daily
+
+/work
+
+/leaderboard
+
+/pay [user] [amount]
+
+/shop
+
+/buy [item]
+
+/inventory
+
+🎯 Custom & Tag Commands
+/tag [name] – Show saved message
+
+/tag create [name] [content]
+
+/tag delete [name]
+
+/quote add [quote]
+
+/quote get [number|random]
+
+📅 Scheduling & Reminders
+/remind [time] [message]
+
+/timer [duration]
+
+/schedule [event name] [time]
+
+/countdown [date]
+
+🛠️ Developer/Owner Only
+/eval [code] (dangerous, secure it)
+
+/reload [module]
+
+/shutdown
+
+/stats
+
+/logs
+
+/permissions [user]
+
+🧩 Other Ideas
+/status [message]
+
+/feedback [message]
+
+/suggest [idea]
+
+/bugreport [issue]
+
+/invite
+
+/support
+
+/github [username]
+
+/reddit [subreddit]
+
+/anime [name]
+
+/movie [title]
+

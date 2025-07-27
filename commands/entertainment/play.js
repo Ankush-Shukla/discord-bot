@@ -26,14 +26,16 @@ const queueMap = new Map();
 
 // ✅ Function to Play a Song
 async function playNextSong(interaction, guildId) {
-  const queue = queueMap.get(guildId);
+   const queue = queueMap.get(guildId);
+  const song = queue.songs[0];
+  const { title, duration, author, thumbnail } = await getYouTubeVideoDetails(song.url);
   if (!queue || queue.songs.length === 0) {
     queueMap.delete(guildId);
     return;
   }
 
-  const song = queue.songs[0];
-  const { title, duration, author, thumbnail } = await getYouTubeVideoDetails(song.url);
+  
+  
   const connection = queue.connection;
   const player = queue.player;
 
@@ -99,6 +101,8 @@ module.exports = {
         .setRequired(true)
         .setAutocomplete(true)
     ),
+    queueMap,
+    
 
   async execute(interaction) {
     const query = interaction.options.getString('query');
