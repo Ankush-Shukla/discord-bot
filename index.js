@@ -1,10 +1,14 @@
-require('dotenv').config();
+console.log(" Script starting...");
 
+require('dotenv').config();
 console.log("🔍 Loading environment variables from .env file...");
 
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+console.log(" Core modules loaded");
+
+const { Client, GatewayIntentBits, Collection } = require('discord.js');
+console.log(" discord.js loaded");
 
 const client = new Client({
   intents: [
@@ -16,14 +20,15 @@ const client = new Client({
     GatewayIntentBits.GuildPresences
   ]
 });
+console.log(" Client created");
 
 // Load BOT_TOKEN from .env
 const token = process.env.BOT_TOKEN;
 if (!token) {
-  console.error("❌ BOT_TOKEN is missing from .env file!");
+  console.error(" BOT_TOKEN is missing from .env file!");
   process.exit(1); // Stop the program if no token is found
 } else {
-  console.log("✅ BOT_TOKEN loaded successfully.");
+  console.log(" BOT_TOKEN loaded successfully.");
 }
 
 // Create a collection for commands
