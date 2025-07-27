@@ -1,6 +1,10 @@
 const { EmbedBuilder } = require('discord.js');
 
+
+
+
 function nowPlayingEmbed(serverName, serverIcon, songTitle, songArtist, duration, queueLength, volume, requester, thumbnail) {
+
   return new EmbedBuilder()
       .setColor('#ff0000')
       .setAuthor({ name: serverName, iconURL: serverIcon })
@@ -15,6 +19,8 @@ function nowPlayingEmbed(serverName, serverIcon, songTitle, songArtist, duration
       .addFields({ name: '🎧 Requested by', value: `<@${requester}>`, inline: false })
       .setTimestamp();
 }
+
+
 
 // ✅ Enhanced User Info Embed with More Details
 function userInfoEmbed(user, member, requester) {
