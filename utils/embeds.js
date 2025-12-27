@@ -3,12 +3,12 @@ const { EmbedBuilder } = require('discord.js');
 
 
 
-function nowPlayingEmbed(serverName, serverIcon, songTitle, songArtist, duration, queueLength, volume, requester, thumbnail) {
+function nowPlayingEmbed(serverName, serverIcon, songTitle, songArtist, duration, queueLength, volume, requester, thumbnail,isactive) {
 
   return new EmbedBuilder()
       .setColor('#ff0000')
       .setAuthor({ name: serverName, iconURL: serverIcon })
-      .setTitle('Now Playing')
+      .setTitle(isactive?"Now Playing":"Next up")
       .setDescription(`**${songTitle} — ${songArtist}**`)
       .setThumbnail(thumbnail)
       .addFields(

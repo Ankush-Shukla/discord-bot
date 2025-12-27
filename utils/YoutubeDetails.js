@@ -5,7 +5,7 @@ const { exec } = require('child_process');
 const execAsync = util.promisify(exec);
 
 // Dynamically resolve yt-dlp binary (handles Linux, macOS, Windows)
-const ytDlpPath = path.resolve('C:/discord-bot/bin/yt-dlp' + (process.platform === 'win32' ? '.exe' : ''));
+const ytDlpPath = "yt-dlp"
 
 /**
  * Converts seconds to hh:mm:ss or mm:ss format.

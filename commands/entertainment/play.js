@@ -1,165 +1,187 @@
+
 require('dotenv').config();
-const {
-  SlashCommandBuilder,
-  PermissionFlagsBits,
-  ActionRowBuilder,
-  StringSelectMenuBuilder
-} = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const {
   joinVoiceChannel,
   createAudioPlayer,
   createAudioResource,
-  AudioPlayerStatus
+  AudioPlayerStatus,
+  StreamType,
+  VoiceConnectionStatus,
+  entersState,
 } = require('@discordjs/voice');
-const { google } = require('googleapis');
-const ffmpeg = require('ffmpeg-static');
 const { spawn } = require('child_process');
-const { promisify } = require('util');
-const execAsync = promisify(require('child_process').exec);
-const path = require('path');
-const { PassThrough } = require('stream');
-const { nowPlayingEmbed } = require('../../utils/embeds');
-const { getYouTubeVideoDetails } = require('../../utils/YoutubeDetails.js');
 
-const youtube = google.youtube({ version: 'v3', auth: process.env.YOUTUBE_API_KEY });
+const { nowPlayingEmbed } = require('../../utils/embeds');
+const { getYouTubeVideoDetails } = require('../../utils/YoutubeDetails');
+
+// Queue map "global" within this file
 const queueMap = new Map();
 
-// ✅ Function to Play a Song
-async function playNextSong(interaction, guildId) {
-   const queue = queueMap.get(guildId);
-  const song = queue.songs[0];
-  const { title, duration, author, thumbnail } = await getYouTubeVideoDetails(song.url);
-  if (!queue || queue.songs.length === 0) {
-    queueMap.delete(guildId);
-    return;
-  }
+/* ================================
+   AUDIO PIPELINE (yt-dlp + ffmpeg)
+================================ */
+function createYTDLPStream(url) {
+  const ytdlp = spawn('yt-dlp', ['-f', 'bestaudio', '-o', '-', url]);
+  const ffmpeg = spawn('ffmpeg', [
+    '-loglevel', 'error',
+    '-i', 'pipe:0',
+    '-map', '0:a',
+    '-c:a', 'libopus',
+    '-b:a', '128k',
+    '-f', 'ogg',
+    'pipe:1',
+  ]);
 
-  
-  
-  const connection = queue.connection;
-  const player = queue.player;
+  ytdlp.stdout.pipe(ffmpeg.stdin);
+  return ffmpeg.stdout;
+}
+
+/* ================================
+   PLAYBACK CONTROLLER
+================================ */
+async function playNext(guildId, interaction) {
+  const queue = queueMap.get(guildId);
+  if (!queue || queue.songs.length === 0) return;
+
+  const song = queue.songs[0];
 
   try {
-    const ytDlpPath = path.resolve(__dirname, '../../bin/yt-dlp.exe');
-    const { stdout: videoInfo } = await execAsync(`"${ytDlpPath}" -f "bestaudio[ext=m4a]" -g "${song.url}"`);
-    const streamUrl = videoInfo.trim();
+    const stream = createYTDLPStream(song.url);
+    const resource = createAudioResource(stream, { inputType: StreamType.OggOpus });
 
-    const ffmpegProcess = spawn(ffmpeg, [
-      '-reconnect', '1',
-      '-reconnect_streamed', '1',
-      '-reconnect_delay_max', '5',
-      '-i', streamUrl,
-      '-analyzeduration', '0',
-      '-loglevel', '0',
-      '-ac', '2',
-      '-ar', '48000',
-      '-acodec', 'libopus',
-      '-f', 'ogg',
-      'pipe:1'
-    ]);
+    queue.player.play(resource);
 
-    const bufferStream = new PassThrough();
-    ffmpegProcess.stdout.pipe(bufferStream);
+    const { title, author, duration, thumbnail } = await getYouTubeVideoDetails(song.url);
 
-    const resource = createAudioResource(bufferStream, {
-      inputType: 'ogg/opus',
-      inlineVolume: true,
-      metadata: { title: song.query },
-      silencePaddingFrames: 0
+    // Now Playing embed
+    await interaction.channel.send({
+      embeds: [
+        nowPlayingEmbed(
+          interaction.guild.name,
+          interaction.guild.iconURL(),
+          title,
+          author,
+          duration,
+          queue.songs.length - 1,
+          '100',
+          song.requester,
+          thumbnail || undefined,
+          true // isActive = Now Playing
+        ),
+      ],
     });
-
-    resource.volume?.setVolume(1);
-    player.play(resource);
-
-    const guild = interaction.guild;
-    const icon = guild?.iconURL({ dynamic: true, format: 'png' }) ?? undefined;
-    const serverName = guild?.name ?? 'Direct Messages';
-    const requester = song.requester;
-
-    const embed = nowPlayingEmbed(serverName, icon, title, author, duration, queue.songs.length - 1, '100', requester, thumbnail);
-    await interaction.channel.send({ embeds: [embed] });
-
-    player.once(AudioPlayerStatus.Idle, () => {
-      queue.songs.shift();
-      playNextSong(interaction, guildId);
-    });
-  } catch (error) {
-    console.error('Error playing song:', error);
+  } catch (err) {
+    console.error('Playback error:', err);
     queue.songs.shift();
-    playNextSong(interaction, guildId);
+    playNext(guildId, interaction);
   }
 }
 
-// ✅ `/play` Command Definition
+/* ================================
+   COMMAND DEFINITION
+================================ */
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('play')
     .setDescription('Play a song from YouTube')
-    .addStringOption(option =>
-      option.setName('query')
-        .setDescription('Song name or YouTube URL')
-        .setRequired(true)
-        .setAutocomplete(true)
+    .addStringOption(opt =>
+      opt.setName('query').setDescription('Song name or YouTube URL').setRequired(true).setAutocomplete(true)
     ),
-    queueMap,
-    
 
   async execute(interaction) {
+    await interaction.deferReply();
     const query = interaction.options.getString('query');
-    const guildId = interaction.guildId;
-    const voiceChannel = interaction.member.voice.channel;
+    if (!query) return interaction.editReply('❌ No query provided.');
 
-    if (!voiceChannel) {
-      return interaction.reply({ content: 'You must be in a voice channel!', ephemeral: true });
+    const voiceChannel = interaction.member.voice.channel;
+    if (!voiceChannel) return interaction.editReply('❌ Join a voice channel first.');
+
+    const guildId = interaction.guildId;
+    let queue = queueMap.get(guildId);
+
+    // Reset stale queue if connection destroyed or idle
+    if (
+      queue &&
+      (!queue.connection || queue.connection.state.status === 'destroyed' || queue.player.state.status === 'idle')
+    ) {
+      queueMap.delete(guildId);
+      queue = null;
     }
 
-    let queue = queueMap.get(guildId);
+    // Create new queue if none exists
     if (!queue) {
       const connection = joinVoiceChannel({
         channelId: voiceChannel.id,
-        guildId: guildId,
-        adapterCreator: interaction.guild.voiceAdapterCreator
+        guildId,
+        adapterCreator: interaction.guild.voiceAdapterCreator,
       });
 
       const player = createAudioPlayer();
+
+      player.on(AudioPlayerStatus.Idle, () => {
+        queue.songs.shift();
+        playNext(guildId, interaction);
+      });
+
+      connection.on(VoiceConnectionStatus.Disconnected, async () => {
+        try {
+          await Promise.race([
+            entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+            entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+          ]);
+        } catch {
+          if (queue?.player) queue.player.stop();
+          connection.destroy();
+          queueMap.delete(guildId);
+        }
+      });
+
       connection.subscribe(player);
 
       queue = { connection, player, songs: [] };
       queueMap.set(guildId, queue);
     }
 
-    try {
-      let videoUrl = query;
-      if (!query.includes('youtube.com') && !query.includes('youtu.be')) {
-        await interaction.deferReply();
-        const response = await youtube.search.list({
-          part: 'snippet',
-          q: query,
-          type: 'video',
-          maxResults: 1,
-          videoCategoryId: '10',
-          topicId: '/m/04rlf',
-          order: 'viewCount'
-        });
-
-        if (!response.data.items.length) {
-          return interaction.editReply('No results found.');
-        }
-
-        videoUrl = `https://www.youtube.com/watch?v=${response.data.items[0].id.videoId}`;
-      }
-
-      queue.songs.push({ url: videoUrl, query, requester: interaction.user.id });
-
-      if (queue.songs.length === 1) {
-        await interaction.deferReply();
-        playNextSong(interaction, guildId);
-      } else {
-        await interaction.reply(`✅ **Added to Queue:** [${query}](${videoUrl})`);
-      }
-    } catch (error) {
-      console.error('Error searching for songs:', error);
-      await interaction.editReply('❌ error occurred'); 
+    // Determine video URL
+    let videoUrl = query;
+    if (!query.includes('youtube.com') && !query.includes('youtu.be')) {
+      const search = spawn('yt-dlp', [`ytsearch1:${query}`, '--print', 'webpage_url']);
+      videoUrl = await new Promise((resolve, reject) => {
+        let data = '';
+        search.stdout.on('data', c => (data += c));
+        search.on('close', () => resolve(data.trim()));
+        search.on('error', reject);
+      });
+      if (!videoUrl) return interaction.editReply('❌ No results found.');
     }
-  }
+
+    queue.songs.push({ url: videoUrl, requester: interaction.user.id });
+
+    // Start playback if first song
+    if (queue.songs.length === 1) {
+      playNext(guildId, interaction);
+    } else {
+      // Send Next Up embed for queued songs
+      const nextSong = queue.songs[queue.songs.length - 1];
+      const { title, author, duration, thumbnail } = await getYouTubeVideoDetails(nextSong.url);
+
+      await interaction.channel.send({
+        embeds: [
+          nowPlayingEmbed(
+            interaction.guild.name,
+            interaction.guild.iconURL(),
+            title,
+            author,
+            duration,
+            queue.songs.length - 1,
+            '100',
+            nextSong.requester,
+            thumbnail || undefined,
+            false // isActive = Next Up
+          ),
+        ],
+      });
+    }
+  },
 };
