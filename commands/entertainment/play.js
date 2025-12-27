@@ -11,12 +11,11 @@ const {
   entersState,
 } = require('@discordjs/voice');
 const { spawn } = require('child_process');
-
 const { nowPlayingEmbed } = require('../../utils/embeds');
 const { getYouTubeVideoDetails } = require('../../utils/YoutubeDetails');
 
 // Queue map "global" within this file
-const queueMap = new Map();
+//const queueMap = new Map();
 
 /* ================================
    AUDIO PIPELINE (yt-dlp + ffmpeg)
@@ -41,7 +40,9 @@ function createYTDLPStream(url) {
    PLAYBACK CONTROLLER
 ================================ */
 async function playNext(guildId, interaction) {
-  const queue = queueMap.get(guildId);
+  
+   const queue = interaction.client.queueMap.get(interaction.guildId);
+  //const queue = queueMap.get(guildId);
   if (!queue || queue.songs.length === 0) return;
 
   const song = queue.songs[0];
@@ -98,14 +99,14 @@ module.exports = {
     if (!voiceChannel) return interaction.editReply('❌ Join a voice channel first.');
 
     const guildId = interaction.guildId;
-    let queue = queueMap.get(guildId);
+    let queue = interaction.client.queueMap.get(guildId);
 
     // Reset stale queue if connection destroyed or idle
     if (
       queue &&
       (!queue.connection || queue.connection.state.status === 'destroyed' || queue.player.state.status === 'idle')
     ) {
-      queueMap.delete(guildId);
+      interaction.client.queueMap.delete(guildId);
       queue = null;
     }
 
@@ -140,7 +141,7 @@ module.exports = {
       connection.subscribe(player);
 
       queue = { connection, player, songs: [] };
-      queueMap.set(guildId, queue);
+      interaction.client.queueMap.set(guildId, queue);
     }
 
     // Determine video URL

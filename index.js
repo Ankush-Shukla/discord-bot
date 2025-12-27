@@ -20,6 +20,7 @@ const client = new Client({
     GatewayIntentBits.GuildPresences
   ]
 });
+client.queueMap = new Map();
 console.log(" Client created");
 
 // Load BOT_TOKEN from .env
